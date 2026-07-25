@@ -1,0 +1,35 @@
+# ===== .NET / WPF =====
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.vspscc
+*.vssscc
+
+# ===== 构建产物 =====
+*.dll
+*.pdb
+*.exe
+*.exe.config
+build/
+
+# ===== NuGet =====
+*.nupkg
+*.snupkg
+.nuget/
+packages/
+
+# ===== IDE =====
+.idea/
+*.swp
+*~
+
+# ===== 系统 =====
+Thumbs.db
+.DS_Store
+desktop.ini
+
+# ===== 日志 =====
+*.log
+logs/
