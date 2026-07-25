@@ -15,8 +15,8 @@ namespace LanRemoteControl.Core
     //  - 接受远控端连接
     //  - 每个客户端启动独立的捕获/推送循环（10 FPS）
     //  - 协议：
-    //      文本指令：MODE|xxx\n  /  PING\n  /  KICK\n
-    //      帧推送  ：FRAME|<size>\n  + <size> 字节 JPEG
+    //      文本指令：MODE|<mode>|<WxH>\n  /  PING\n
+    //      帧推送  ：FRAME|<size>|<WxH>\n  + <size> 字节 JPEG
     // ============================================================
     public static class NetworkServer
     {
@@ -119,8 +119,16 @@ namespace LanRemoteControl.Core
             if (parts.Length == 0) return;
             switch (parts[0])
             {
+                // 协议：MODE|<mode>[|<WxH>]
+                // 例：MODE|Control|1280x720
                 case "MODE" when parts.Length >= 2:
                     session.Mode = parts[1];
+                    // 解析可选分辨率
+                    if (parts.Length >= 3 && TryParseRes(parts[2], out int w, out int h))
+                    {
+                        session.Width = w;
+                        session.Height = h;
+                    }
                     ModeChanged?.Invoke(ip, parts[1]);
                     break;
                 case "PING":
@@ -131,6 +139,15 @@ namespace LanRemoteControl.Core
                     } catch { }
                     break;
             }
+        }
+
+        private static bool TryParseRes(string s, out int w, out int h)
+        {
+            w = h = 0;
+            var seg = s.Split('x');
+            if (seg.Length != 2) return false;
+            return int.TryParse(seg[0], out w) && int.TryParse(seg[1], out h)
+                   && w >= 320 && w <= 3840 && h >= 240 && h <= 2160;
         }
 
         // ===== 画面推送循环：10 FPS，模式为 File 时暂停 =====
@@ -157,10 +174,10 @@ namespace LanRemoteControl.Core
 
         private static async Task SendFrameAsync(ClientSession session)
         {
-            var jpeg = ScreenCapture.CaptureToJpeg();
+            var jpeg = ScreenCapture.CaptureToJpeg(session.Width, session.Height);
             var stream = session.Client.GetStream();
-            // 帧头：FRAME|<size>\n
-            var header = Encoding.UTF8.GetBytes($"FRAME|{jpeg.Length}\n");
+            // 帧头：FRAME|<size>|<W>x<H>\n
+            var header = Encoding.UTF8.GetBytes($"FRAME|{jpeg.Length}|{session.Width}x{session.Height}\n");
             await stream.WriteAsync(header, 0, header.Length);
             // 帧数据
             await stream.WriteAsync(jpeg, 0, jpeg.Length);
@@ -171,6 +188,8 @@ namespace LanRemoteControl.Core
         {
             public TcpClient Client = null!;
             public string Mode = "Control";
+            public int Width = 1280;
+            public int Height = 720;
             public CancellationTokenSource? CaptureCts;
         }
     }

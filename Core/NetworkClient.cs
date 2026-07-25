@@ -10,13 +10,13 @@ namespace LanRemoteControl.Core
     //  远控端 TCP 客户端
     //  - 连接被控端监听端口
     //  - 发送模式切换指令 / 文件传输
-    //  - 接收并解析帧（FRAME|size\n + JPEG 数据）
+    //  - 接收并解析帧（FRAME|size|WxH\n + JPEG 数据）
     //  - 通过 FrameReceived 事件回调 UI 层
     // ============================================================
     public static class NetworkClient
     {
-        // 帧到达事件：参数为 JPEG 字节数组
-        public static event Action<byte[]>? FrameReceived;
+        // 帧到达事件：参数为 JPEG 字节数组 + 帧分辨率
+        public static event Action<byte[], int, int>? FrameReceived;
         public static event Action? Disconnected;
 
         private static TcpClient? _client;
@@ -41,7 +41,9 @@ namespace LanRemoteControl.Core
             Disconnected?.Invoke();
         }
 
-        public static void SendMode(string mode) => Send($"MODE|{mode}");
+        // 发送模式 + 分辨率：MODE|<mode>|<WxH>
+        public static void SendMode(string mode, int width, int height) =>
+            Send($"MODE|{mode}|{width}x{height}");
 
         public static async Task SendFileAsync(string path)
         {
@@ -100,8 +102,10 @@ namespace LanRemoteControl.Core
             if (parts.Length == 0) return;
             switch (parts[0])
             {
-                case "FRAME" when parts.Length >= 2 && int.TryParse(parts[1], out int size):
-                    await ReadFrameAsync(size);
+                // 协议：FRAME|<size>|<WxH>\n
+                case "FRAME" when parts.Length >= 3 && int.TryParse(parts[1], out int size):
+                    var (w, h) = ParseRes(parts[2]);
+                    await ReadFrameAsync(size, w, h);
                     break;
                 case "PONG":
                     // 心跳回应，暂不处理
@@ -109,7 +113,15 @@ namespace LanRemoteControl.Core
             }
         }
 
-        private static async Task ReadFrameAsync(int size)
+        private static (int, int) ParseRes(string s)
+        {
+            var seg = s.Split('x');
+            if (seg.Length == 2 && int.TryParse(seg[0], out int w) && int.TryParse(seg[1], out int h))
+                return (w, h);
+            return (1280, 720);
+        }
+
+        private static async Task ReadFrameAsync(int size, int w, int h)
         {
             if (_stream == null) return;
             var buf = new byte[size];
@@ -122,7 +134,7 @@ namespace LanRemoteControl.Core
             }
             if (total == size)
             {
-                FrameReceived?.Invoke(buf);
+                FrameReceived?.Invoke(buf, w, h);
             }
         }
 
