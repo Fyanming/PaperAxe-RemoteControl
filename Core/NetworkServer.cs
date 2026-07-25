@@ -91,14 +91,13 @@ namespace LanRemoteControl.Core
             // 启动画面推送循环（仅 Control/View 模式）
             _ = Task.Run(() => FrameLoopAsync(session), session.CaptureCts!.Token);
 
-            // 接收指令循环
+            // 接收指令循环（直接读字节，避免 StreamReader 缓冲与帧推送线程抢流）
             try
             {
-                using var stream = client.GetStream();
-                using var reader = new StreamReader(stream, Encoding.UTF8, leaveOpen: true);
+                var stream = client.GetStream();
                 while (client.Connected)
                 {
-                    var line = await reader.ReadLineAsync();
+                    var line = await ReadLineAsync(stream);
                     if (line == null) break;
                     HandleMessage(ip, session, line, stream);
                 }
@@ -110,6 +109,21 @@ namespace LanRemoteControl.Core
                 lock (_lock) { _sessions.Remove(ip); }
                 try { client.Close(); } catch { }
                 ClientDisconnected?.Invoke(ip);
+            }
+        }
+
+        // 简易行读取：按字节扫描 \n，避免 StreamReader 预读缓冲
+        private static async Task<string?> ReadLineAsync(NetworkStream stream)
+        {
+            var sb = new StringBuilder();
+            var buf = new byte[1];
+            while (true)
+            {
+                var n = await stream.ReadAsync(buf, 0, 1);
+                if (n == 0) return null;
+                var c = (char)buf[0];
+                if (c == '\n') return sb.ToString();
+                sb.Append(c);
             }
         }
 
@@ -155,6 +169,8 @@ namespace LanRemoteControl.Core
         {
             const int frameInterval = 100; // ms → 10 FPS
             var token = session.CaptureCts!.Token;
+            // 等待远控端发送首个 MODE 指令后再开始推帧（避免连接建立瞬间推流导致对端未就绪）
+            await Task.Delay(200, token);
             try
             {
                 while (!token.IsCancellationRequested && session.Client.Connected)
@@ -163,7 +179,9 @@ namespace LanRemoteControl.Core
                     if (session.Mode != "File")
                     {
                         try { await SendFrameAsync(session); }
-                        catch { break; }
+                        catch (OperationCanceledException) { break; }
+                        catch (IOException) { break; }   // 连接断开
+                        catch { /* 捕获/编码瞬时错误，跳过本帧继续 */ }
                     }
                     await Task.Delay(frameInterval, token);
                 }
@@ -188,8 +206,8 @@ namespace LanRemoteControl.Core
         {
             public TcpClient Client = null!;
             public string Mode = "Control";
-            public int Width = 1280;
-            public int Height = 720;
+            public int Width = 960;
+            public int Height = 540;
             public CancellationTokenSource? CaptureCts;
         }
     }
