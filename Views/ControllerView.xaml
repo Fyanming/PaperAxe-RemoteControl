@@ -101,15 +101,31 @@
                         </Grid.ColumnDefinitions>
                         <TextBlock Grid.Column="0" Text="远程画面" FontFamily="{StaticResource SerifFont}" FontSize="16" FontWeight="Medium"/>
                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
-                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource InkSoftBrush}">
-                                <Run Text="分辨率 "/><Run x:Name="MetaRes" Text="—" FontWeight="Medium" Foreground="{StaticResource InkBrush}"/>
+                            <!-- 分辨率选择 -->
+                            <TextBlock Text="画质" FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource InkSoftBrush}" VerticalAlignment="Center"/>
+                            <ComboBox x:Name="ResCombo" Margin="6,0,0,0" FontFamily="{StaticResource MonoFont}" FontSize="11"
+                                      SelectionChanged="ResCombo_SelectionChanged">
+                                <ComboBoxItem Content="960×540" Tag="960x540"/>
+                                <ComboBoxItem Content="1280×720" Tag="1280x720" IsSelected="True"/>
+                                <ComboBoxItem Content="1600×900" Tag="1600x900"/>
+                                <ComboBoxItem Content="1920×1080" Tag="1920x1080"/>
+                                <ComboBoxItem Content="原画质" Tag="0x0"/>
+                            </ComboBox>
+                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource InkSoftBrush}" Margin="16,0,0,0" VerticalAlignment="Center">
+                                <Run Text="实际 "/><Run x:Name="MetaRes" Text="—" FontWeight="Medium" Foreground="{StaticResource InkBrush}"/>
                             </TextBlock>
-                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource InkSoftBrush}" Margin="16,0,0,0">
+                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource InkSoftBrush}" Margin="16,0,0,0" VerticalAlignment="Center">
                                 <Run Text="延迟 "/><Run x:Name="MetaLatency" Text="—" FontWeight="Medium" Foreground="{StaticResource InkBrush}"/>
                             </TextBlock>
-                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource InkSoftBrush}" Margin="16,0,0,0">
+                            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11" Foreground="{StaticResource InkSoftBrush}" Margin="16,0,0,0" VerticalAlignment="Center">
                                 <Run Text="码率 "/><Run x:Name="MetaBitrate" Text="—" FontWeight="Medium" Foreground="{StaticResource InkBrush}"/>
                             </TextBlock>
+                            <!-- 全屏按钮 -->
+                            <Button x:Name="FullscreenBtn" Content="⤢ 全屏" Margin="16,0,0,0" Padding="10,4"
+                                    FontSize="11" FontFamily="{StaticResource MonoFont}" Cursor="Hand"
+                                    Background="Transparent" Foreground="{StaticResource InkBrush}"
+                                    BorderBrush="{StaticResource LineBrush}" BorderThickness="1"
+                                    Click="Fullscreen_Click"/>
                         </StackPanel>
                     </Grid>
                     <Border Grid.Row="1" x:Name="ScreenBody" Background="#1A1A1A">

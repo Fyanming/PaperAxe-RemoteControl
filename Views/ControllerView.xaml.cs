@@ -8,6 +8,7 @@ using System.Windows.Media;
 using System.Windows.Media.Animation;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 using LanRemoteControl.Core;
 using LanRemoteControl.Models;
 
@@ -21,6 +22,11 @@ namespace LanRemoteControl.Views
         private readonly ObservableCollection<FileTask> _files = new();
         private string _mode = "Control";
         private bool _connecting, _connected;
+        private int _resW = 1280, _resH = 720;
+
+        // 全屏状态
+        private bool _isFullscreen;
+        private Window? _fsWindow;
 
         public ControllerView()
         {
@@ -33,7 +39,7 @@ namespace LanRemoteControl.Views
         }
 
         // ===== 帧到达：切回 UI 线程更新 Image =====
-        private void OnFrameReceived(byte[] jpeg)
+        private void OnFrameReceived(byte[] jpeg, int w, int h)
         {
             Dispatcher.InvokeAsync(() =>
             {
@@ -49,9 +55,90 @@ namespace LanRemoteControl.Views
                     }
                     bmp.Freeze(); // 跨线程安全
                     RemoteImage.Source = bmp;
+                    // 更新分辨率显示
+                    if (w > 0 && h > 0) MetaRes.Text = $"{w}×{h}";
                 }
                 catch { /* 解码失败忽略，等下一帧 */ }
             });
+        }
+
+        // ===== 分辨率切换 =====
+        private void ResCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+        {
+            if (ResCombo.SelectedItem is not ComboBoxItem item) return;
+            var tag = item.Tag?.ToString() ?? "1280x720";
+            var seg = tag.Split('x');
+            if (seg.Length != 2 || !int.TryParse(seg[0], out int w) || !int.TryParse(seg[1], out int h)) return;
+            _resW = w; _resH = h;
+            // 原画质：使用主屏物理分辨率
+            if (w == 0 || h == 0)
+            {
+                var screen = System.Windows.Forms.Screen.PrimaryScreen;
+                if (screen != null)
+                {
+                    _resW = screen.Bounds.Width;
+                    _resH = screen.Bounds.Height;
+                }
+            }
+            // 已连接则发送新分辨率
+            if (_connected) NetworkClient.SendMode(_mode, _resW, _resH);
+        }
+
+        // ===== 全屏切换 =====
+        private void Fullscreen_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_isFullscreen) EnterFullscreen();
+            else ExitFullscreen();
+        }
+
+        private void EnterFullscreen()
+        {
+            if (!_connected) return;
+            _isFullscreen = true;
+            FullscreenBtn.Content = "⤡ 退出";
+            // 创建独立全屏窗口承载 RemoteImage
+            _fsWindow = new Window
+            {
+                Title = "远程画面（全屏）",
+                WindowStyle = WindowStyle.None,
+                WindowState = WindowState.Maximized,
+                Background = Brushes.Black,
+                Content = new Image
+                {
+                    Source = RemoteImage.Source,
+                    Stretch = Stretch.Uniform,
+                    RenderTransformOrigin = new Point(0.5, 0.5)
+                }
+            };
+            _fsWindow.PreviewKeyDown += (s, e) =>
+            {
+                if (e.Key == Key.Escape) ExitFullscreen();
+            };
+            _fsWindow.Closed += (s, e) => ExitFullscreen();
+            _fsWindow.Show();
+            // 持续把帧同步到全屏窗口
+            CompositionTarget.Rendering += SyncFsImage;
+        }
+
+        private void ExitFullscreen()
+        {
+            if (!_isFullscreen) return;
+            _isFullscreen = false;
+            FullscreenBtn.Content = "⤢ 全屏";
+            CompositionTarget.Rendering -= SyncFsImage;
+            if (_fsWindow != null)
+            {
+                _fsWindow.Close();
+                _fsWindow = null;
+            }
+        }
+
+        private void SyncFsImage(object? sender, EventArgs e)
+        {
+            if (_fsWindow?.Content is Image img)
+            {
+                img.Source = RemoteImage.Source;
+            }
         }
 
         private void OnDisconnected()
@@ -78,7 +165,7 @@ namespace LanRemoteControl.Views
                     radio.Fill = selected ? FindResource("AccentBrush") as Brush : Brushes.Transparent;
             }
             _mode = clicked.Tag?.ToString() ?? "Control";
-            if (_connected) NetworkClient.SendMode(_mode);
+            if (_connected) NetworkClient.SendMode(_mode, _resW, _resH);
         }
 
         // ===== 建立连接 =====
@@ -133,10 +220,10 @@ namespace LanRemoteControl.Views
                 AutoReverse = true, RepeatBehavior = RepeatBehavior.Forever
             };
             LiveDot.BeginAnimation(OpacityProperty, blink);
-            MetaRes.Text = "1920×1080";
-            MetaLatency.Text = "12ms";
-            MetaBitrate.Text = "4.5Mbps";
-            NetworkClient.SendMode(_mode);
+            MetaRes.Text = "—";
+            MetaLatency.Text = "—";
+            MetaBitrate.Text = "—";
+            NetworkClient.SendMode(_mode, _resW, _resH);
             ToastNotifier.Show("连接已建立", "远控通道开启 → " + ip);
         }
 
