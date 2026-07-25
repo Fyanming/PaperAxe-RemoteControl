@@ -115,7 +115,7 @@
                     <Border Grid.Row="1" x:Name="ScreenBody" Background="#1A1A1A">
                         <Grid>
                             <!-- 远程画面 -->
-                            <Image x:Name="RemoteImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighSpeed"/>
+                            <Image x:Name="RemoteImage" Stretch="Uniform" RenderOptions.BitmapScalingMode="LowQuality"/>
                             <!-- 占位提示（未连接时显示） -->
                             <StackPanel x:Name="ScreenPlaceholder" VerticalAlignment="Center" HorizontalAlignment="Center">
                                 <TextBlock Text="等待连接" Foreground="#6B6B6B" FontFamily="{StaticResource SerifFont}" FontSize="18" FontStyle="Italic" HorizontalAlignment="Center"/>
