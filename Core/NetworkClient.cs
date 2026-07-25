@@ -77,6 +77,7 @@ namespace LanRemoteControl.Core
         }
 
         // ===== 接收循环：直接读 NetworkStream，先读一行文本头，再按类型处理 =====
+        // 关键：必须 await HandleHeader，否则与下一轮 ReadLineAsync 并发抢读同一流，导致数据错乱
         private static async Task ReceiveLoopAsync()
         {
             if (_stream == null || _client == null) return;
@@ -86,7 +87,7 @@ namespace LanRemoteControl.Core
                 {
                     var header = await ReadLineAsync();
                     if (header == null) break;
-                    HandleHeader(header);
+                    await HandleHeaderAsync(header);
                 }
             }
             catch { }
@@ -96,7 +97,7 @@ namespace LanRemoteControl.Core
             }
         }
 
-        private static async void HandleHeader(string header)
+        private static async Task HandleHeaderAsync(string header)
         {
             var parts = header.Split('|');
             if (parts.Length == 0) return;
