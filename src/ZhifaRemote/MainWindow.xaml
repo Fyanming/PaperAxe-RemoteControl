@@ -1,0 +1,236 @@
+<Window x:Class="ZhifaRemote.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:controls="clr-namespace:ZhifaRemote.Controls"
+        Title="纸伐局域网远控"
+        Width="1180" Height="800"
+        MinWidth="1024" MinHeight="680"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None"
+        AllowsTransparency="True"
+        Background="Transparent"
+        FontFamily="{StaticResource AppFont}">
+    <Grid Margin="18">
+        <Border CornerRadius="22" Background="#D9F7FAFD" BorderBrush="#B8FFFFFF" BorderThickness="1" ClipToBounds="True">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="58"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <!-- 标题栏 -->
+                <Grid Grid.Row="0" Background="#22FFFFFF" MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="Auto"/>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="Auto"/>
+                    </Grid.ColumnDefinitions>
+                    <StackPanel Orientation="Horizontal" Margin="24,0,0,0" VerticalAlignment="Center">
+                        <Ellipse Width="11" Height="11" Fill="{StaticResource PrimaryBrush}" VerticalAlignment="Center"/>
+                        <TextBlock Text="纸伐" FontSize="20" FontWeight="Bold" Foreground="{StaticResource InkBrush}" Margin="10,0,0,0"/>
+                        <TextBlock Text="局域网远控" Style="{StaticResource GlassCaption}" Margin="8,2,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="本机 IP" Style="{StaticResource GlassCaption}" Margin="0,0,8,0"/>
+                        <TextBlock x:Name="LocalIpText" Style="{StaticResource GlassCaption}" Foreground="{StaticResource InkBrush}" FontWeight="SemiBold"/>
+                    </StackPanel>
+                    <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <controls:RippleButton x:Name="MinimizeButton" Style="{StaticResource IconButton}" Content="–"
+                                               ToolTip="最小化" Click="MinimizeButton_Click"/>
+                        <controls:RippleButton x:Name="CloseButton" Style="{StaticResource IconButton}" Content="×"
+                                               Margin="6,0,0,0" ToolTip="关闭" Click="CloseButton_Click"/>
+                    </StackPanel>
+                </Grid>
+
+                <!-- 工作台 -->
+                <Grid Grid.Row="1">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="400"/>
+                        <ColumnDefinition Width="20"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左列：连接中心 + 音频 -->
+                    <StackPanel Grid.Column="0" Margin="20,14,0,18">
+                        <Border Style="{StaticResource GlassPanel}" x:Name="ConnectionCard" Padding="20">
+                            <StackPanel>
+                                <Grid>
+                                    <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                                        <TextBlock Text="连接中心" Style="{StaticResource GlassTitle}" FontSize="17"/>
+                                        <Ellipse x:Name="ConnectionDot" Style="{StaticResource StatusDot}" Margin="10,0,0,0"/>
+                                    </StackPanel>
+                                    <TextBlock x:Name="ConnectionStateText" HorizontalAlignment="Right" VerticalAlignment="Center"
+                                               Style="{StaticResource GlassCaption}"/>
+                                </Grid>
+
+                                <Border Background="#33FFFFFF" CornerRadius="12" Padding="4" Margin="0,18,0,0">
+                                    <StackPanel Orientation="Horizontal">
+                                        <RadioButton x:Name="RoleServerRadio" Style="{StaticResource SegmentedRadio}"
+                                                     GroupName="Role" Content="作为被控端" IsChecked="True" Checked="Role_OnChecked"/>
+                                        <RadioButton x:Name="RoleClientRadio" Style="{StaticResource SegmentedRadio}"
+                                                     GroupName="Role" Content="作为远控端" Checked="Role_OnChecked"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <StackPanel x:Name="ServerModePanel" Margin="0,16,0,0">
+                                    <TextBlock Text="监听端口" Style="{StaticResource GlassCaption}" Margin="2,0,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="ServerPortBox" Style="{StaticResource GlassTextBox}" Text="48666"/>
+                                        <controls:RippleButton x:Name="StartServerButton" Grid.Column="2" Style="{StaticResource PrimaryButton}"
+                                                               Content="启动被控端" Click="StartServerButton_Click"/>
+                                        <controls:RippleButton x:Name="StopServerButton" Grid.Column="2" Style="{StaticResource GhostButton}"
+                                                               Content="停止监听" Visibility="Collapsed" Click="StopServerButton_Click"/>
+                                    </Grid>
+                                    <TextBlock x:Name="ServerStatusText" Style="{StaticResource GlassCaption}" Margin="2,10,0,0"
+                                               Text="等待启动，启动后输入本机 IP 即可被远控"/>
+                                </StackPanel>
+
+                                <StackPanel x:Name="ClientModePanel" Margin="0,16,0,0" Visibility="Collapsed">
+                                    <TextBlock Text="被控端 IP" Style="{StaticResource GlassCaption}" Margin="2,0,0,6"/>
+                                    <TextBox x:Name="ClientIpBox" Style="{StaticResource GlassTextBox}" Text="192.168.1.100"/>
+                                    <TextBlock Text="端口" Style="{StaticResource GlassCaption}" Margin="2,10,0,6"/>
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="10"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <TextBox x:Name="ClientPortBox" Style="{StaticResource GlassTextBox}" Text="48666"/>
+                                        <controls:RippleButton x:Name="ConnectButton" Grid.Column="2" Style="{StaticResource PrimaryButton}"
+                                                               Content="连接远控" Click="ConnectButton_Click"/>
+                                        <controls:RippleButton x:Name="DisconnectButton" Grid.Column="2" Style="{StaticResource GhostButton}"
+                                                               Content="断开连接" Visibility="Collapsed" Click="DisconnectButton_Click"/>
+                                    </Grid>
+                                    <TextBlock x:Name="ClientStatusText" Style="{StaticResource GlassCaption}" Margin="2,10,0,0"
+                                               Text="输入被控端局域网 IP 与端口，自动建立远控连接"/>
+                                </StackPanel>
+                            </StackPanel>
+                        </Border>
+
+                        <Border Style="{StaticResource GlassPanel}" x:Name="AudioCard" Margin="0,16,0,0" Padding="18">
+                            <StackPanel>
+                                <TextBlock Text="虚拟音频设备" Style="{StaticResource GlassTitle}"/>
+                                <TextBlock x:Name="AudioStatusText" Style="{StaticResource GlassCaption}" Margin="0,8,0,0"
+                                           TextWrapping="Wrap" LineHeight="18"/>
+                                <Grid Margin="0,12,0,0">
+                                    <TextBlock Text="远控时自动归零系统音量，并将默认输出切换到虚拟设备回传声音"
+                                               Style="{StaticResource GlassCaption}" TextWrapping="Wrap" VerticalAlignment="Center"/>
+                                    <controls:RippleButton x:Name="OpenVirtualButton" Style="{StaticResource GhostButton}"
+                                                           HorizontalAlignment="Right" Content="下载引导" Click="OpenVirtualButton_Click"/>
+                                </Grid>
+                            </StackPanel>
+                        </Border>
+                    </StackPanel>
+
+                    <!-- 右列 -->
+                    <Grid Grid.Column="2" Margin="0,14,20,18">
+                        <Grid.RowDefinitions>
+                            <RowDefinition Height="*"/>
+                            <RowDefinition Height="18"/>
+                            <RowDefinition Height="240"/>
+                        </Grid.RowDefinitions>
+
+                        <Grid Grid.Row="0">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="*"/>
+                                <ColumnDefinition Width="14"/>
+                                <ColumnDefinition Width="*"/>
+                            </Grid.ColumnDefinitions>
+
+                            <Border Style="{StaticResource GlassPanel}" x:Name="ModeCard" Grid.Column="0">
+                                <StackPanel>
+                                    <TextBlock Text="远控模式" Style="{StaticResource GlassTitle}"/>
+                                    <Border Background="#33FFFFFF" CornerRadius="12" Padding="4" Margin="0,14,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <RadioButton x:Name="ControlModeRadio" Style="{StaticResource SegmentedRadio}"
+                                                         GroupName="Mode" Content="操控" IsChecked="True" Checked="Mode_OnChecked"/>
+                                            <RadioButton x:Name="WatchModeRadio" Style="{StaticResource SegmentedRadio}"
+                                                         GroupName="Mode" Content="观看" Checked="Mode_OnChecked"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <TextBlock x:Name="ModeHintText" Style="{StaticResource GlassCaption}" Margin="2,12,0,0"
+                                               TextWrapping="Wrap" LineHeight="18" Text="操控模式会转发鼠标键盘；观看模式只显示画面，不注入任何操作"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource GlassPanel}" x:Name="QualityCard" Grid.Column="2">
+                                <StackPanel>
+                                    <TextBlock Text="画质与帧率" Style="{StaticResource GlassTitle}"/>
+                                    <Border Background="#33FFFFFF" CornerRadius="12" Padding="4" Margin="0,12,0,0">
+                                        <StackPanel Orientation="Horizontal">
+                                            <RadioButton x:Name="QualityLowRadio" Style="{StaticResource SegmentedRadio}"
+                                                         GroupName="Quality" Content="低" Checked="Quality_OnChecked"/>
+                                            <RadioButton x:Name="QualityMediumRadio" Style="{StaticResource SegmentedRadio}"
+                                                         GroupName="Quality" Content="中" IsChecked="True" Checked="Quality_OnChecked"/>
+                                            <RadioButton x:Name="QualityHighRadio" Style="{StaticResource SegmentedRadio}"
+                                                         GroupName="Quality" Content="高" Checked="Quality_OnChecked"/>
+                                            <RadioButton x:Name="QualityUltraRadio" Style="{StaticResource SegmentedRadio}"
+                                                         GroupName="Quality" Content="极致" Checked="Quality_OnChecked"/>
+                                        </StackPanel>
+                                    </Border>
+                                    <Grid Margin="0,10,0,0">
+                                        <TextBlock Text="帧率" Style="{StaticResource GlassCaption}" VerticalAlignment="Center"/>
+                                        <TextBlock x:Name="FpsValueText" Style="{StaticResource GlassCaption}" HorizontalAlignment="Right"
+                                                   Text="12 FPS"/>
+                                    </Grid>
+                                    <Slider x:Name="FpsSlider" Style="{StaticResource GlassSlider}" Minimum="5" Maximum="60"
+                                            Value="12" TickFrequency="1" IsSnapToTickEnabled="True" ValueChanged="FpsSlider_OnValueChanged"/>
+                                </StackPanel>
+                            </Border>
+
+                            <Border Style="{StaticResource GlassPanel}" x:Name="FileCard" Grid.Column="4">
+                                <StackPanel>
+                                    <Grid>
+                                        <TextBlock Text="文件传输" Style="{StaticResource GlassTitle}" VerticalAlignment="Center"/>
+                                        <controls:RippleButton x:Name="SendFileButton" Style="{StaticResource PrimaryButton}"
+                                                               HorizontalAlignment="Right" Content="发送文件" Padding="12,6"
+                                                               Click="SendFileButton_Click"/>
+                                    </Grid>
+                                    <ListBox x:Name="TransfersList" Style="{StaticResource GlassListBox}" Margin="0,10,0,0"
+                                             MaxHeight="150">
+                                        <ListBox.ItemTemplate>
+                                            <DataTemplate>
+                                                <StackPanel Margin="0,2">
+                                                    <Grid>
+                                                        <TextBlock Text="{Binding Name}" Style="{StaticResource GlassCaption}"
+                                                                   Foreground="{StaticResource InkBrush}" TextTrimming="CharacterEllipsis"
+                                                                   VerticalAlignment="Center"/>
+                                                        <TextBlock Text="{Binding State}" Style="{StaticResource GlassCaption}"
+                                                                   HorizontalAlignment="Right"/>
+                                                    </Grid>
+                                                    <ProgressBar Value="{Binding Progress}" Maximum="100"
+                                                                 Style="{StaticResource GlassProgressBar}" Margin="0,4,0,0"/>
+                                                </StackPanel>
+                                            </DataTemplate>
+                                        </ListBox.ItemTemplate>
+                                    </ListBox>
+                                    <TextBlock Text="支持双向传输，接收端会弹出保存位置"
+                                               Style="{StaticResource GlassCaption}" Margin="2,8,0,0"/>
+                                </StackPanel>
+                            </Border>
+                        </Grid>
+
+                        <Border Style="{StaticResource GlassPanel}" x:Name="LogCard" Grid.Row="2" Padding="18">
+                            <Grid>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto"/>
+                                    <RowDefinition Height="*"/>
+                                </Grid.RowDefinitions>
+                                <TextBlock Text="连接日志" Style="{StaticResource GlassTitle}"/>
+                                <ListBox x:Name="LogList" Grid.Row="1" Style="{StaticResource GlassListBox}" Margin="0,10,0,0"
+                                         ScrollViewer.VerticalScrollBarVisibility="Auto"/>
+                            </Grid>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
