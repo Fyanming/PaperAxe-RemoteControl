@@ -10,11 +10,17 @@
     <RootNamespace>ZhifaRemote</RootNamespace>
     <AssemblyName>纸伐局域网远控</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>Assets\App.ico</ApplicationIcon>
     <NoWarn>$(NoWarn);WFO0003</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="NAudio" Version="2.2.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\AppIcon.png" />
+    <Resource Include="Assets\App.ico" />
   </ItemGroup>
 
 </Project>

@@ -11,7 +11,7 @@ public sealed class NotifyService : IDisposable
             _icon = new System.Windows.Forms.NotifyIcon
             {
                 Text = "纸伐局域网远控",
-                Icon = System.Drawing.SystemIcons.Information,
+                Icon = LoadAppIcon(),
                 Visible = true
             };
         }
@@ -19,6 +19,23 @@ public sealed class NotifyService : IDisposable
         {
             _icon = null;
         }
+    }
+
+    private static System.Drawing.Icon LoadAppIcon()
+    {
+        try
+        {
+            var stream = System.Windows.Application.GetResourceStream(
+                new Uri("pack://application:,,,/Assets/App.ico", UriKind.Absolute))?.Stream;
+            if (stream is not null)
+            {
+                return new System.Drawing.Icon(stream);
+            }
+        }
+        catch
+        {
+        }
+        return System.Drawing.SystemIcons.Information;
     }
 
     public void Show(string title, string body)
