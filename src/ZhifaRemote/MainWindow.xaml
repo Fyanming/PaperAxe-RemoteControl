@@ -12,15 +12,20 @@
         Background="Transparent"
         FontFamily="{StaticResource AppFont}">
     <Grid Margin="18">
-        <Border CornerRadius="22" Background="#D9F7FAFD" BorderBrush="#B8FFFFFF" BorderThickness="1" ClipToBounds="True">
+        <Border x:Name="MainFrame" CornerRadius="22" Background="#D9F7FAFD" BorderBrush="#B8FFFFFF" BorderThickness="1" ClipToBounds="True">
             <Grid>
                 <Grid.RowDefinitions>
                     <RowDefinition Height="58"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
+                <MediaElement x:Name="BackgroundVideo" Grid.RowSpan="2" Visibility="Collapsed"
+                              Stretch="UniformToFill" IsHitTestVisible="False"
+                              LoadedBehavior="Manual" UnloadedBehavior="Stop"
+                              MediaEnded="BackgroundVideo_OnMediaEnded"
+                              MediaFailed="BackgroundVideo_OnMediaFailed"/>
 
                 <!-- 标题栏 -->
-                <Grid Grid.Row="0" Background="#22FFFFFF" MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
+                <Grid x:Name="TitleBar" Grid.Row="0" Background="#22FFFFFF" MouseLeftButtonDown="TitleBar_OnMouseLeftButtonDown">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="Auto"/>
                         <ColumnDefinition Width="*"/>
@@ -36,8 +41,10 @@
                         <TextBlock x:Name="LocalIpText" Style="{StaticResource GlassCaption}" Foreground="{StaticResource InkBrush}" FontWeight="SemiBold"/>
                     </StackPanel>
                     <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,14,0" VerticalAlignment="Center">
+                        <controls:RippleButton x:Name="SettingsButton" Style="{StaticResource IconButton}" Content="⚙"
+                                               ToolTip="设置" Click="SettingsButton_Click"/>
                         <controls:RippleButton x:Name="MinimizeButton" Style="{StaticResource IconButton}" Content="–"
-                                               ToolTip="最小化" Click="MinimizeButton_Click"/>
+                                               Margin="6,0,0,0" ToolTip="最小化" Click="MinimizeButton_Click"/>
                         <controls:RippleButton x:Name="CloseButton" Style="{StaticResource IconButton}" Content="×"
                                                Margin="6,0,0,0" ToolTip="关闭" Click="CloseButton_Click"/>
                     </StackPanel>
@@ -232,6 +239,101 @@
                     </Grid>
                 </Grid>
             </Grid>
+        </Border>
+
+        <Border x:Name="SettingsPanel" Panel.ZIndex="20" HorizontalAlignment="Right" VerticalAlignment="Top"
+                Margin="0,74,18,0" Width="380" Background="#F5FFFFFF" BorderBrush="#B8FFFFFF"
+                BorderThickness="1" CornerRadius="14" Padding="18" Visibility="Collapsed">
+            <StackPanel>
+                <Grid>
+                    <TextBlock Text="外观设置" Style="{StaticResource GlassTitle}" FontSize="16"/>
+                    <TextBlock x:Name="SettingsSaveText" HorizontalAlignment="Right" VerticalAlignment="Center"
+                               Style="{StaticResource GlassCaption}" Text="自动保存"/>
+                </Grid>
+
+                <TextBlock Text="背景类型" Style="{StaticResource GlassCaption}" Margin="2,14,0,6"/>
+                <Border Background="#33FFFFFF" CornerRadius="12" Padding="4">
+                    <StackPanel Orientation="Horizontal">
+                        <RadioButton x:Name="BgDefaultRadio" Style="{StaticResource SegmentedRadio}" GroupName="BgMode"
+                                     Content="默认" IsChecked="True" Checked="BackgroundMode_OnChecked"/>
+                        <RadioButton x:Name="BgStaticRadio" Style="{StaticResource SegmentedRadio}" GroupName="BgMode"
+                                     Content="静态" Checked="BackgroundMode_OnChecked"/>
+                        <RadioButton x:Name="BgDynamicRadio" Style="{StaticResource SegmentedRadio}" GroupName="BgMode"
+                                     Content="动态" Checked="BackgroundMode_OnChecked"/>
+                    </StackPanel>
+                </Border>
+
+                <StackPanel x:Name="StaticPanel" Visibility="Collapsed">
+                    <TextBlock Text="内置配色" Style="{StaticResource GlassCaption}" Margin="2,14,0,6"/>
+                    <WrapPanel x:Name="ColorSwatchPanel">
+                        <controls:RippleButton Style="{StaticResource SwatchButton}" Background="#EAF4FB" Tag="#EAF4FB"
+                                               ToolTip="冰川蓝" Click="Swatch_OnClick"/>
+                        <controls:RippleButton Style="{StaticResource SwatchButton}" Background="#DCE7F2" Tag="#DCE7F2"
+                                               ToolTip="雾灰蓝" Click="Swatch_OnClick"/>
+                        <controls:RippleButton Style="{StaticResource SwatchButton}" Background="#E3F4EE" Tag="#E3F4EE"
+                                               ToolTip="薄荷白" Click="Swatch_OnClick"/>
+                        <controls:RippleButton Style="{StaticResource SwatchButton}" Background="#F7E8F0" Tag="#F7E8F0"
+                                               ToolTip="樱粉" Click="Swatch_OnClick"/>
+                        <controls:RippleButton Style="{StaticResource SwatchButton}" Background="#FFF0E4" Tag="#FFF0E4"
+                                               ToolTip="暖杏" Click="Swatch_OnClick"/>
+                        <controls:RippleButton Style="{StaticResource SwatchButton}" Background="#232B33" Tag="#232B33"
+                                               ToolTip="石墨" Click="Swatch_OnClick"/>
+                    </WrapPanel>
+
+                    <TextBlock Text="自定义图片" Style="{StaticResource GlassCaption}" Margin="2,10,0,6"/>
+                    <Grid>
+                        <TextBox x:Name="ImagePathBox" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Text="未选择图片"/>
+                        <controls:RippleButton x:Name="PickImageButton" Style="{StaticResource GhostButton}"
+                                               HorizontalAlignment="Right" Content="选择" Padding="12,6"
+                                               Click="PickImageButton_Click"/>
+                    </Grid>
+                    <controls:RippleButton x:Name="ClearImageButton" Style="{StaticResource GhostButton}" Content="清除图片"
+                                           Margin="0,8,0,0" Padding="12,6" HorizontalAlignment="Right"
+                                           Click="ClearImageButton_Click"/>
+                </StackPanel>
+
+                <StackPanel x:Name="DynamicPanel" Visibility="Collapsed">
+                    <TextBlock Text="动态效果" Style="{StaticResource GlassCaption}" Margin="2,14,0,6"/>
+                    <Border Background="#33FFFFFF" CornerRadius="12" Padding="4">
+                        <StackPanel Orientation="Horizontal">
+                            <RadioButton x:Name="AuroraRadio" Style="{StaticResource SegmentedRadio}" GroupName="DynamicKind"
+                                         Content="极光渐变" IsChecked="True" Checked="DynamicKind_OnChecked"/>
+                            <RadioButton x:Name="StreamRadio" Style="{StaticResource SegmentedRadio}" GroupName="DynamicKind"
+                                         Content="流光背景" Checked="DynamicKind_OnChecked"/>
+                            <RadioButton x:Name="VideoRadio" Style="{StaticResource SegmentedRadio}" GroupName="DynamicKind"
+                                         Content="视频背景" Checked="DynamicKind_OnChecked"/>
+                        </StackPanel>
+                    </Border>
+                    <StackPanel x:Name="SpeedSection">
+                        <Grid Margin="0,12,0,0">
+                            <TextBlock Text="动画速度" Style="{StaticResource GlassCaption}" VerticalAlignment="Center"/>
+                            <TextBlock x:Name="SpeedValueText" Style="{StaticResource GlassCaption}" HorizontalAlignment="Right"
+                                       VerticalAlignment="Center" Text="1.0x"/>
+                        </Grid>
+                        <Slider x:Name="SpeedSlider" Style="{StaticResource GlassSlider}" Minimum="0.3" Maximum="2.5"
+                                Value="1" TickFrequency="0.1" IsSnapToTickEnabled="True"
+                                ValueChanged="SpeedSlider_OnValueChanged"/>
+                    </StackPanel>
+                    <StackPanel x:Name="VideoPanel" Visibility="Collapsed">
+                        <TextBlock Text="本地视频" Style="{StaticResource GlassCaption}" Margin="2,12,0,6"/>
+                        <Grid>
+                            <TextBox x:Name="VideoPathBox" Style="{StaticResource GlassTextBox}" IsReadOnly="True" Text="未选择视频"/>
+                            <controls:RippleButton x:Name="PickVideoButton" Style="{StaticResource GhostButton}"
+                                                   HorizontalAlignment="Right" Content="选择" Padding="12,6"
+                                                   Click="PickVideoButton_Click"/>
+                        </Grid>
+                        <controls:RippleButton x:Name="ClearVideoButton" Style="{StaticResource GhostButton}" Content="清除视频"
+                                               Margin="0,8,0,0" Padding="12,6" HorizontalAlignment="Right"
+                                               Click="ClearVideoButton_Click"/>
+                        <TextBlock x:Name="VideoStatusText" Style="{StaticResource GlassCaption}" Margin="2,8,0,0"
+                                   TextWrapping="Wrap" Text="支持 mp4、wmv、avi、mkv、mov，循环播放"/>
+                    </StackPanel>
+                </StackPanel>
+
+                <controls:RippleButton x:Name="ResetBackgroundButton" Style="{StaticResource GhostButton}"
+                                       Content="恢复默认背景" Margin="0,16,0,0" Padding="12,8"
+                                       Click="ResetBackgroundButton_Click"/>
+            </StackPanel>
         </Border>
     </Grid>
 </Window>

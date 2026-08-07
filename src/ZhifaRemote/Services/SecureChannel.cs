@@ -15,6 +15,8 @@ internal sealed class SecureChannel : IDisposable
 
     private readonly NetworkStream _stream;
     private readonly byte[] _key;
+    private readonly AesGcm _writeAes;
+    private readonly AesGcm _readAes;
     private readonly SemaphoreSlim _writeLock = new(1, 1);
     private long _nonceCounter;
 
@@ -22,6 +24,8 @@ internal sealed class SecureChannel : IDisposable
     {
         _stream = stream;
         _key = key;
+        _writeAes = new AesGcm(key, TagSize);
+        _readAes = new AesGcm(key, TagSize);
     }
 
     public async Task WriteMessageAsync(byte type, byte[] payload)
@@ -30,20 +34,15 @@ internal sealed class SecureChannel : IDisposable
         var nonce = BuildNonce();
         var cipher = new byte[plain.Length];
         var tag = new byte[TagSize];
-        using (var aes = new AesGcm(_key, TagSize))
-        {
-            aes.Encrypt(nonce, plain, cipher, tag);
-        }
-
-        var frame = new byte[4 + FrameOverhead + cipher.Length];
-        BinaryPrimitives.WriteInt32BigEndian(frame, FrameOverhead + cipher.Length);
-        Buffer.BlockCopy(nonce, 0, frame, 4, NonceSize);
-        Buffer.BlockCopy(cipher, 0, frame, 4 + NonceSize, cipher.Length);
-        Buffer.BlockCopy(tag, 0, frame, 4 + NonceSize + cipher.Length, TagSize);
-
         await _writeLock.WaitAsync();
         try
         {
+            _writeAes.Encrypt(nonce, plain, cipher, tag);
+            var frame = new byte[4 + FrameOverhead + cipher.Length];
+            BinaryPrimitives.WriteInt32BigEndian(frame, FrameOverhead + cipher.Length);
+            Buffer.BlockCopy(nonce, 0, frame, 4, NonceSize);
+            Buffer.BlockCopy(cipher, 0, frame, 4 + NonceSize, cipher.Length);
+            Buffer.BlockCopy(tag, 0, frame, 4 + NonceSize + cipher.Length, TagSize);
             await _stream.WriteAsync(frame);
             await _stream.FlushAsync();
         }
@@ -69,8 +68,7 @@ internal sealed class SecureChannel : IDisposable
         var plain = new byte[cipher.Length];
         try
         {
-            using var aes = new AesGcm(_key, TagSize);
-            aes.Decrypt(nonce, cipher, tag, plain);
+            _readAes.Decrypt(nonce, cipher, tag, plain);
         }
         catch (CryptographicException)
         {
@@ -91,6 +89,8 @@ internal sealed class SecureChannel : IDisposable
     public void Dispose()
     {
         CryptographicOperations.ZeroMemory(_key);
+        _writeAes.Dispose();
+        _readAes.Dispose();
         _writeLock.Dispose();
     }
 }

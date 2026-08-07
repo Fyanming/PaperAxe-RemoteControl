@@ -89,3 +89,27 @@ public sealed class ObservableCollectionEx<T> : System.Collections.ObjectModel.O
         foreach (var item in items) Add(item);
     }
 }
+
+public enum BackgroundMode
+{
+    Default,
+    Static,
+    Dynamic
+}
+
+public enum DynamicBackgroundKind
+{
+    Aurora,
+    LightStream,
+    Video
+}
+
+public sealed class AppSettings
+{
+    public BackgroundMode BackgroundMode { get; set; }
+    public string StaticColorHex { get; set; } = "#EAF4FB";
+    public string StaticImagePath { get; set; } = "";
+    public DynamicBackgroundKind DynamicKind { get; set; } = DynamicBackgroundKind.Aurora;
+    public string DynamicVideoPath { get; set; } = "";
+    public double AnimationSpeed { get; set; } = 1.0;
+}

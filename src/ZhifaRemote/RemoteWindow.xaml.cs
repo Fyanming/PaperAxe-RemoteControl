@@ -29,10 +29,11 @@ public partial class RemoteWindow : Window
     private readonly DispatcherTimer _hideTimer;
     private readonly DispatcherTimer _fpsTimer;
     private readonly DispatcherTimer _latencyTimer;
-    private readonly DispatcherTimer _inputFlushTimer;
+    private readonly System.Threading.Timer _inputFlushTimer;
+    private readonly object _inputLock = new();
     private readonly object _frameLock = new();
     private int _frameCount;
-    private bool _controlMode = true;
+    private volatile bool _controlMode = true;
     private bool _initialized;
     private (int X, int Y, bool Valid) _pendingMove;
     private byte[]? _latestFrame;
@@ -57,8 +58,11 @@ public partial class RemoteWindow : Window
         };
         _latencyTimer = new DispatcherTimer { Interval = TimeSpan.FromSeconds(1) };
         _latencyTimer.Tick += (_, _) => _ = _controller.SendPingAsync();
-        _inputFlushTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(16) };
-        _inputFlushTimer.Tick += (_, _) => FlushPendingMove();
+        _inputFlushTimer = new System.Threading.Timer(
+            _ => FlushPendingMoveFromTimer(),
+            null,
+            Timeout.Infinite,
+            Timeout.Infinite);
 
         _controller.FrameReceived += OnFrameReceived;
         _controller.LatencyChanged += OnLatencyChanged;
@@ -112,7 +116,7 @@ public partial class RemoteWindow : Window
         }
         if (_frameRenderScheduled) return;
         _frameRenderScheduled = true;
-        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RenderLatestFrame));
+        Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(RenderLatestFrame));
     }
 
     private void RenderLatestFrame()
@@ -151,7 +155,7 @@ public partial class RemoteWindow : Window
 
         try
         {
-            Dispatcher.Invoke(DispatcherPriority.Background, new Action(() =>
+            Dispatcher.Invoke(DispatcherPriority.Normal, new Action(() =>
             {
                 if (bitmap is not null)
                 {
@@ -163,7 +167,7 @@ public partial class RemoteWindow : Window
                     if (_latestFrame is not null)
                     {
                         _frameRenderScheduled = true;
-                        Dispatcher.BeginInvoke(DispatcherPriority.Background, new Action(RenderLatestFrame));
+                        Dispatcher.BeginInvoke(DispatcherPriority.Normal, new Action(RenderLatestFrame));
                     }
                 }
             }));
@@ -197,11 +201,11 @@ public partial class RemoteWindow : Window
         if (!_controlMode) return;
         var (x, y, inside) = MapPointToScreen(e.GetPosition(ScreenImage));
         if (!inside) return;
-        _pendingMove = (x, y, true);
-        if (!_inputFlushTimer.IsEnabled)
+        lock (_inputLock)
         {
-            _inputFlushTimer.Start();
+            _pendingMove = (x, y, true);
         }
+        _inputFlushTimer.Change(16, 16);
     }
 
     private void ScreenImage_OnMouseDown(object sender, MouseButtonEventArgs e)
@@ -301,15 +305,42 @@ public partial class RemoteWindow : Window
 
     private void FlushPendingMove()
     {
-        _inputFlushTimer.Stop();
-        if (!_controlMode || !_pendingMove.Valid) return;
+        (int X, int Y, bool Valid) pending;
+        lock (_inputLock)
+        {
+            pending = _pendingMove;
+            _pendingMove = default;
+        }
+        _inputFlushTimer.Change(Timeout.Infinite, Timeout.Infinite);
+        if (!_controlMode || !pending.Valid) return;
         _controller.SendInputEvent(new InputEvent
         {
             Kind = InputKind.MouseMove,
-            X = _pendingMove.X,
-            Y = _pendingMove.Y
+            X = pending.X,
+            Y = pending.Y
         });
-        _pendingMove = default;
+    }
+
+    private void FlushPendingMoveFromTimer()
+    {
+        (int X, int Y, bool Valid) pending;
+        lock (_inputLock)
+        {
+            pending = _pendingMove;
+            _pendingMove = default;
+        }
+        if (!pending.Valid)
+        {
+            _inputFlushTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            return;
+        }
+        if (!_controlMode) return;
+        _controller.SendInputEvent(new InputEvent
+        {
+            Kind = InputKind.MouseMove,
+            X = pending.X,
+            Y = pending.Y
+        });
     }
 
     private static int ToButtonId(MouseButton button)
@@ -440,6 +471,6 @@ public partial class RemoteWindow : Window
         _hideTimer.Stop();
         _fpsTimer.Stop();
         _latencyTimer.Stop();
-        _inputFlushTimer.Stop();
+        _inputFlushTimer.Dispose();
     }
 }
